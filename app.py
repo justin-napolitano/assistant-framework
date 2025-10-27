@@ -1,122 +1,111 @@
-import asyncio, os, json, logging, contextlib
-from typing import Dict, Any
-from fastapi import FastAPI
-import httpx
-from dotenv import load_dotenv
+import os, asyncio
+from dataclasses import dataclass
+from langchain_openai import ChatOpenAI
+from langchain.agents import Tool, initialize_agent, AgentType
 
-load_dotenv()
+# New: use the client + tool
+from services.weather_client import weather_today
+from tools.weather_tool import weather_tool
 
-from agent import get_agent, ToolError
+from tools.shell import run_safe
 
-logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
-log = logging.getLogger("assistant-core")
+try:
+    DISABLE_RAG = os.getenv("DISABLE_RAG", "true").lower() in ("1","true","yes")
+    if not DISABLE_RAG:
+        from rag.indexer import query_docs
+    else:
+        query_docs = None
+except Exception:
+    query_docs = None
+    DISABLE_RAG = True
 
-SIGNAL_API_BASE   = os.getenv("SIGNAL_API_BASE", "http://signal-api:8080")
-SIGNAL_NUMBER     = os.getenv("SIGNAL_NUMBER")
-NOTIFY_URL        = os.getenv("NOTIFY_URL", "http://notifier-gateway:8787/notify")
-GATEWAY_TOKEN     = os.getenv("GATEWAY_TOKEN")
-POLL_TIMEOUT_SEC  = int(os.getenv("POLL_TIMEOUT_SEC", "60"))
-DISABLE_RAG       = os.getenv("DISABLE_RAG", "true").lower() in ("1","true","yes")
-ALLOW_SENDERS     = set(s.strip() for s in os.getenv("ALLOW_SENDERS", "").split(",") if s.strip())
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-if not SIGNAL_NUMBER or not GATEWAY_TOKEN:
-    raise SystemExit("SIGNAL_NUMBER and GATEWAY_TOKEN are required")
+class ToolError(Exception): pass
 
-app = FastAPI(title="assistant-core", version="0.1.0")
-agent = get_agent(disable_rag=DISABLE_RAG)
+def _parse_city_state(s: str):
+    """
+    Accepts:
+      "/weather Orlando, FL"  -> ("Orlando", "FL")
+      "/weather Orlando"      -> ("Orlando", None)
+      "Orlando, FL"           -> ("Orlando", "FL")
+      "Orlando"               -> ("Orlando", None)
+    """
+    if not s:
+        return None, None
+    q = s.replace("/weather", "").strip().strip(",")
+    if "," in q:
+        c, st = [x.strip() for x in q.split(",", 1)]
+        return (c or None, st or None)
+    parts = q.split()
+    if len(parts) >= 2:
+        return (" ".join(parts[:-1]).strip() or None, parts[-1].strip() or None)
+    return (q or None, None)
 
-async def send_signal(to: str, message: str):
-    headers = {"Authorization": f"Bearer {GATEWAY_TOKEN}", "Content-Type": "application/json"}
-    data = {"to": to, "message": message}
-    async with httpx.AsyncClient(timeout=10) as client:
-        r = await client.post(NOTIFY_URL, headers=headers, json=data)
-        r.raise_for_status()
+@dataclass
+class AssistantAgent:
+    agent: any
 
-async def handle_incoming(envelope: Dict[str, Any]):
-    sender = envelope.get("source")
-    data_msg = envelope.get("dataMessage") or {}
-    text = data_msg.get("message")
-    if not sender or not text:
-        return
+    async def run(self, sender: str, text: str) -> str:
+        t = text.strip()
 
-    if ALLOW_SENDERS and sender not in ALLOW_SENDERS:
-        log.warning("Rejecting message from non-allowed sender: %s", sender)
-        return
+        # /weather (direct call to service client; fast and predictable)
+        if t.startswith("/weather"):
+            city, state = _parse_city_state(t)
+            if not city:
+                city = os.getenv("WEATHER_DEFAULT_CITY", os.getenv("DEFAULT_CITY", "Orlando"))
+            if not state:
+                state = os.getenv("WEATHER_DEFAULT_STATE", None)
+            return await asyncio.to_thread(weather_today, city, state)
 
-    t = text.strip()
-    if t == "/help":
-        msg = ("Commands:\n"
-               "/help – this menu\n"
-               "/status – service heartbeat\n"
-               "/weather [city] – quick weather\n"
-               "/run <safe-cmd> – run whitelisted shell command")
-        await send_signal(sender, msg); return
+        # /run <cmd>
+        if t.startswith("/run "):
+            cmd = t[len("/run "):].strip()
+            out = await asyncio.to_thread(run_safe, cmd)
+            return f"```\n{out}\n```" if out else "(no output)"
 
-    if t == "/status":
-        await send_signal(sender, "✅ assistant-core alive"); return
+        # /ask <q> (RAG)
+        if t.startswith("/ask ") and query_docs:
+            q = t[len("/ask "):].strip()
+            ans = await asyncio.to_thread(query_docs, q)
+            return ans
 
+        # Fallback to LLM agent w/ tools (includes weather_tool for NL queries)
+        if self.agent:
+            return await asyncio.to_thread(self.agent.run, text)
+
+        return "LLM not configured. Try /weather, /run <cmd>, or set OPENAI_API_KEY."
+
+def get_agent(disable_rag: bool = True) -> AssistantAgent:
+    tools = [
+        # Keep shell as a simple Tool
+        Tool(name="run", func=run_safe, description="Run whitelisted shell commands"),
+        # Add weather StructuredTool so the LLM can call it in natural language
+        weather_tool,
+    ]
     try:
-        reply = await agent.run(sender=sender, text=text)
-    except ToolError as e:
-        reply = f"Tool error: {e}"
+        if not disable_rag and 'query_docs' in globals() and query_docs:
+            tools.append(Tool(name="docs", func=query_docs, description="Query local documents"))
     except Exception:
-        log.exception("Agent failure")
-        reply = "Sorry — something went wrong."
+        pass
 
-    await send_signal(sender, reply)
+    if OPENAI_API_KEY:
+        llm = ChatOpenAI(
+            model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+            api_key=OPENAI_API_KEY,
+            temperature=0.2,
+        )
+        agent = initialize_agent(
+            tools,
+            llm,
+            agent_type=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+            verbose=False,
+        )
+    else:
+        class Dummy:
+            def run(self, text):
+                return ("LLM not configured. Try /weather, /run <cmd>, "
+                        "or set OPENAI_API_KEY to enable natural language.")
+        agent = Dummy()
 
-async def poll_loop():
-    url = f"{SIGNAL_API_BASE}/v1/receive/{SIGNAL_NUMBER}"
-    params = {"timeout": POLL_TIMEOUT_SEC}
-    log.info("Starting receive poller: %s", url)
-
-    while True:
-        try:
-            async with httpx.AsyncClient(timeout=POLL_TIMEOUT_SEC + 10) as client:
-                r = await client.get(url, params=params)
-                if r.status_code == 204:
-                    continue
-                r.raise_for_status()
-                payload = r.json()
-                if isinstance(payload, list):
-                    for env in payload:
-                        try:
-                            await handle_incoming(env)
-                        except Exception:
-                            log.exception("Error handling envelope")
-        except (httpx.TimeoutException, httpx.ConnectError):
-            await asyncio.sleep(2)
-        except Exception:
-            log.exception("Poller error")
-            await asyncio.sleep(3)
-
-@app.on_event("startup")
-async def _startup():
-    app.state.poll_task = asyncio.create_task(poll_loop())
-
-@app.on_event("shutdown")
-async def _shutdown():
-    with contextlib.suppress(Exception):
-        app.state.poll_task.cancel()
-
-# --- inbox for gateway push ---
-from fastapi import Request, Header, HTTPException
-INBOX_TOKEN = os.getenv("INBOX_TOKEN", os.getenv("GATEWAY_TOKEN", ""))
-
-@app.post("/inbox")
-async def inbox(req: Request, authorization: str = Header(default="")):
-    if authorization != f"Bearer {INBOX_TOKEN}":
-        raise HTTPException(status_code=401, detail="unauthorized")
-    env = await req.json()                 # normalized envelope from gateway
-    sender = env.get("from")
-    text   = env.get("message")
-    if not sender or not text:
-        return {"ok": True}
-    # Reuse existing handler path:
-    await handle_incoming({"source": sender, "dataMessage": {"message": text}})
-    return {"ok": True}
-
-
-@app.get("/healthz")
-def health():
-    return {"ok": True}
+    return AssistantAgent(agent)

@@ -99,6 +99,24 @@ async def _shutdown():
     with contextlib.suppress(Exception):
         app.state.poll_task.cancel()
 
+# --- inbox for gateway push ---
+from fastapi import Request, Header, HTTPException
+INBOX_TOKEN = os.getenv("INBOX_TOKEN", os.getenv("GATEWAY_TOKEN", ""))
+
+@app.post("/inbox")
+async def inbox(req: Request, authorization: str = Header(default="")):
+    if authorization != f"Bearer {INBOX_TOKEN}":
+        raise HTTPException(status_code=401, detail="unauthorized")
+    env = await req.json()                 # normalized envelope from gateway
+    sender = env.get("from")
+    text   = env.get("message")
+    if not sender or not text:
+        return {"ok": True}
+    # Reuse existing handler path:
+    await handle_incoming({"source": sender, "dataMessage": {"message": text}})
+    return {"ok": True}
+
+
 @app.get("/healthz")
 def health():
     return {"ok": True}

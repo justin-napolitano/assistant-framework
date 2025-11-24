@@ -22,6 +22,12 @@ seoSecondaryKeywords:
   - langchain
   - personal assistant
 seoOptimized: true
+topicFamily: automation
+topicFamilyConfidence: 0.95
+topicFamilyNotes: >-
+  The post describes building and deploying a personal assistant automation system involving APIs,
+  asynchronous python, tool integrations, and docker deployment, matching the 'Automation' family
+  which covers automation of build, deployment, scripts, docker, and programming workflows.
 ---
 
 # Building assistant-core: A Signal-Driven Personal Assistant with FastAPI and LangChain
@@ -83,4 +89,5 @@ This project is a solid portfolio piece demonstrating practical application of A
 ---
 
 Thanks for reading! If you want to try it out or contribute, check out the repo and drop me a message on Signal.
+
 

@@ -7,8 +7,8 @@ githubUrl: https://github.com/justin-napolitano/assistant-framework
 generatedAt: '2025-11-24T21:33:59.442Z'
 source: github-auto
 summary: >-
-  Explore a modular assistant framework using FastAPI and LangChain for Signal
-  messaging integration and command processing.
+  Explore a modular assistant framework using FastAPI and LangChain for Signal messaging integration
+  and command processing.
 tags:
   - fastapi
   - langchain
@@ -28,8 +28,8 @@ seoSecondaryKeywords:
   - command processing
   - openai api usage
 seoOptimized: true
-topicFamily: null
-topicFamilyConfidence: null
+topicFamily: automation
+topicFamilyConfidence: 0.9
 kind: project
 entryLayout: project
 showInProjects: true
@@ -118,4 +118,5 @@ make logs
 ---
 
 This project is designed to be a modular, extensible personal assistant backend leveraging modern AI and messaging technologies.
+
 

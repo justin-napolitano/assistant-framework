@@ -7,8 +7,8 @@ githubUrl: https://github.com/justin-napolitano/assistant-framework
 generatedAt: '2025-11-24T21:33:59.442Z'
 source: github-auto
 summary: >-
-  Build a modular personal assistant using FastAPI, LangChain, and Docker for
-  seamless Signal messaging integration.
+  Explore a modular assistant framework using FastAPI and LangChain for Signal
+  messaging integration and command processing.
 tags:
   - fastapi
   - langchain
@@ -17,13 +17,16 @@ tags:
   - python
   - httpx
   - openai
+  - signal-cli-rest-api
+  - asynchronous programming
 seoPrimaryKeyword: signal-driven personal assistant framework
 seoSecondaryKeywords:
   - fastapi assistant
-  - docker personal assistant
   - langchain integration
-  - signal messaging bot
-  - openai api assistant
+  - docker deployment
+  - signal messaging
+  - command processing
+  - openai api usage
 seoOptimized: true
 topicFamily: null
 topicFamilyConfidence: null

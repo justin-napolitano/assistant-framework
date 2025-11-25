@@ -1,13 +1,13 @@
 ---
 slug: github-assistant-framework
-title: 'assistant-core: Signal-Driven Personal Assistant with FastAPI and LangChain'
+title: 'Building assistant-core: A Signal-Driven Personal Assistant'
 repo: justin-napolitano/assistant-framework
 githubUrl: https://github.com/justin-napolitano/assistant-framework
 generatedAt: '2025-11-23T08:14:45.405223Z'
 source: github-auto
 summary: >-
-  Description of assistant-core, a personal assistant using Signal messages, FastAPI, LangChain, and
-  local tools to process commands securely and asynchronously.
+  Explore the development of assistant-core, a personal assistant using FastAPI
+  and LangChain for intelligent Signal message handling.
 tags:
   - fastapi
   - langchain
@@ -15,19 +15,26 @@ tags:
   - personal-assistant
   - async-python
   - docker
-seoPrimaryKeyword: assistant-core
+  - asynchronous programming
+  - microservices
+  - nlp
+seoPrimaryKeyword: signal-driven personal assistant
 seoSecondaryKeywords:
-  - signal-cli-rest-api
-  - fastapi
-  - langchain
-  - personal assistant
+  - fastapi personal assistant
+  - langchain integration
+  - signal messaging automation
+  - asynchronous python
+  - containerized applications
 seoOptimized: true
 topicFamily: automation
 topicFamilyConfidence: 0.95
 topicFamilyNotes: >-
-  The post describes building and deploying a personal assistant automation system involving APIs,
-  asynchronous python, tool integrations, and docker deployment, matching the 'Automation' family
-  which covers automation of build, deployment, scripts, docker, and programming workflows.
+  The post describes building and deploying a personal assistant automation
+  system involving APIs, asynchronous python, tool integrations, and docker
+  deployment, matching the 'Automation' family which covers automation of build,
+  deployment, scripts, docker, and programming workflows.
+kind: project
+id: github-assistant-framework
 ---
 
 # Building assistant-core: A Signal-Driven Personal Assistant with FastAPI and LangChain

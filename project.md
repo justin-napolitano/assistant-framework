@@ -1,20 +1,30 @@
 ---
 slug: github-assistant-framework
 id: github-assistant-framework
-title: assistant-core
+title: Signal-Driven Personal Assistant Framework with FastAPI
 repo: justin-napolitano/assistant-framework
 githubUrl: https://github.com/justin-napolitano/assistant-framework
 generatedAt: '2025-11-24T21:33:59.442Z'
 source: github-auto
 summary: >-
-  Signal-driven personal assistant service built using FastAPI and LangChain. It
-  integrates with signal-cli-rest-api to receive Signal messages, processes
-  commands via various tools or a large language model (LLM), and responds
-  through a notifier gateway.
-tags: []
-seoPrimaryKeyword: ''
-seoSecondaryKeywords: []
-seoOptimized: false
+  Build a modular personal assistant using FastAPI, LangChain, and Docker for
+  seamless Signal messaging integration.
+tags:
+  - fastapi
+  - langchain
+  - docker
+  - signal-cli
+  - python
+  - httpx
+  - openai
+seoPrimaryKeyword: signal-driven personal assistant framework
+seoSecondaryKeywords:
+  - fastapi assistant
+  - docker personal assistant
+  - langchain integration
+  - signal messaging bot
+  - openai api assistant
+seoOptimized: true
 topicFamily: null
 topicFamilyConfidence: null
 kind: project
